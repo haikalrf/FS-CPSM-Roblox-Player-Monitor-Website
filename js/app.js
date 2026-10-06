@@ -47,11 +47,24 @@ async function load(){
     console.log('Cache hit','b:'+d.b.length,'n:'+d.n.length,'g:'+d.g.length,'f:'+d.f.length);
     return;
   }
-  try{const[b,n,g]=await Promise.all([
-  F('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at&order=created_at.desc&limit=500','/api/behaviors?limit=500'),
-  F('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at&order=created_at.desc&limit=500','/api/npc-chats?limit=500'),
-  F('/gui_logs?select=id,player_id,player_name,ui_element,input_data,created_at&order=created_at.desc&limit=1000','/api/gui-logs?limit=1000')
-]);S.raw.behavior=b||[];S.raw.npc=n||[];S.raw.gui=g||[];S.raw.feedback=(g||[]).map(r=>{let fd={};try{fd=JSON.parse(r.input_data||'{}')}catch(e){}return{id:r.id,player_id:r.player_id,player_name:r.player_name,created_at:r.created_at,frame:fd.frame||'',feedback_type:fd.feedback_type||r.ui_element||'',player_answer:fd.player_answer||fd.answer||fd.jawaban||'',feedback_message:fd.feedback_message||'',is_correct:fd.is_correct||false,attempt_count:fd.attempt_count||0,question_num:fd.question||fd.questionNum||0};});S.backend=SB_ONLINE?'Supabase':'SQLite';console.log(S.backend,'b:'+S.raw.behavior.length,'n:'+S.raw.npc.length,'g:'+S.raw.gui.length,'f:'+S.raw.feedback.length);_cache={data:{b:S.raw.behavior,n:S.raw.npc,g:S.raw.gui,f:S.raw.feedback,backend:S.backend},ts:Date.now()};}catch(e){console.error('Load:',e);}}
+  try{
+    const[b,n,g]=await Promise.all([
+      CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at&order=created_at.desc&limit=500'),
+      CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at&order=created_at.desc&limit=500'),
+      CheckSupabaseStatus('/gui_logs?select=id,player_id,player_name,ui_element,input_data,created_at&order=created_at.desc&limit=1000')
+    ]);
+    S.raw.behavior=b||[];
+    S.raw.npc=n||[];
+    S.raw.gui=g||[];
+    S.raw.feedback=(g||[]).map(r=>{let fd={};try{fd=JSON.parse(r.input_data||'{}')}catch(e){}return{id:r.id,player_id:r.player_id,player_name:r.player_name,created_at:r.created_at,frame:fd.frame||'',feedback_type:fd.feedback_type||r.ui_element||'',player_answer:fd.player_answer||fd.answer||fd.jawaban||'',feedback_message:fd.feedback_message||'',is_correct:fd.is_correct||false,attempt_count:fd.attempt_count||0,question_num:fd.question||fd.questionNum||0};});
+    S.backend='Supabase';
+    console.log(S.backend,'b:'+S.raw.behavior.length,'n:'+S.raw.npc.length,'g:'+S.raw.gui.length,'f:'+S.raw.feedback.length);
+    _cache={data:{b:S.raw.behavior,n:S.raw.npc,g:S.raw.gui,f:S.raw.feedback,backend:S.backend},ts:Date.now()};
+  }catch(e){
+    console.error('Load:',e);
+  }
+}
+
 function disc(){const m=new Map();for(const t of['behavior','gui','npc','feedback'])for(const r of S.raw[t]){const id=r.player_id||'?';if(!m.has(id))m.set(id,{id,name:r.player_name||'?',ts:r.created_at||r.timestamp||''});const p=m.get(id);const ts=r.created_at||r.timestamp||'';if(ts>p.ts)p.ts=ts;}S.ap=[...m.values()].sort((a,b)=>b.ts.localeCompare(a.ts));}
 
 function fsetup(){const s=$('#playerFilter');s.innerHTML='<option value="">Semua Player</option>'+S.ap.map(p=>'<option value="'+escA(p.name)+'">'+escH(p.name)+'</option>').join('');s.addEventListener('change',()=>{S.sp=s.value;});$('#dateLive').addEventListener('change',()=>{S.dl=$('#dateLive').value;});const d=latestDate();$('#dateLive').value=d;S.dl=d;$('#applyFiltersBtn').addEventListener('click',()=>{S.sp=$('#playerFilter').value;S.dl=$('#dateLive').value;S.p=1;apply();});$('#resetFiltersBtn').addEventListener('click',()=>{$('#playerFilter').value='';S.sp='';S.dl=latestDate();$('#dateLive').value=S.dl;S.et='';S.sr='';$('#searchInput').value='';S.p=1;apply();});}
