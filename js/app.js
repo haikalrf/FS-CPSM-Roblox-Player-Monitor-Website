@@ -1,17 +1,33 @@
 /* Simulasi Banjir — Dashboard v5 (Supabase + SQLite fallback + Feedback) */
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
-const SB='https://qbxvttgzxlfjockyrxne.supabase.co/rest/v1';
-const SK='sb_publishable_0hLvs4Q3CeNj9wQayNRKSA_JKdVgyPv';
-const API='https://laser-cakes-pennsylvania-pike.trycloudflare.com';
-const H={apikey:SK,Authorization:'Bearer '+SK};
+const supabase_url='https://jjhjhqsduijyexuazeov.supabase.co/rest/v1';
+const supabase_key='sb_publishable_5d01ZWZgdBZJOJpoYsYwVg_aA2R6yL3';
+//const API='https://laser-cakes-pennsylvania-pike.trycloudflare.com';
+const http_header ={apikey:supabase_key,Authorization:'Bearer '+supabase_key};
 
-let SB_ONLINE=true;
-async function F(endpoint,fallback){
-  if(SB_ONLINE){try{const r=await fetch(SB+endpoint,{headers:H, signal:AbortSignal.timeout(5000)});if(r.ok)return await r.json();}catch(e){SB_ONLINE=false;console.warn('Supabase down, switching to SQLite');}}
-  try{const r=await fetch(API+fallback);if(r.ok){const d=await r.json();return d.data||d;}}catch(e){console.warn('All backends down');}
+async function CheckSupabaseStatus(endpoint) {
+
+  const response = await fetch(supabase_url + endpoint, {
+    headers: http_header,
+    signal: AbortSignal.timeout(5000)
+  }).catch(err => {
+    console.error('Koneksi Supabase gagal/timeout:', err.message);
+    return null;
+  });
+
+  if (!response) {
+    return [];
+  }
+
+  if (response.ok) {
+    return await response.json();
+  }
+  
+  console.error(`Gagal mengambil data dari Supabase (${response.status}):`, response.statusText);
+
   return [];
-}
 
+}
 
 // Data cache
 let _cache={data:null,ts:0};
