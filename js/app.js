@@ -138,7 +138,7 @@ async function load() {
     const [b, n, g] = await Promise.all([
       CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at&order=created_at.desc&limit=500'),
       CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at&order=created_at.desc&limit=500'),
-      CheckSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=1000')
+      CheckSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=5000')
     ]);
 
     S.raw.behavior = b || [];
