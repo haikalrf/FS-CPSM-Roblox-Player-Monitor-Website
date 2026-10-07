@@ -89,62 +89,67 @@ function tick() {
   }
 }
 
-async function load() {
-  const now = Date.now();
-  if (_cache.data && (now - _cache.ts) < CACHE_TTL) {
-    const d = _cache.data;
-    S.raw.behavior = d.b;
-    S.raw.npc = d.n;
-    S.raw.gui = d.g;
-    S.raw.feedback = d.f;
-    S.backend = d.backend;
-    console.log('Cache hit', 'b:' + d.b.length, 'n:' + d.n.length, 'g:' + d.g.length, 'f:' + d.f.length);
-    return;
-  }
-  try {
-    const [b, n, g] = await Promise.all([
+const [b, n, g] = await Promise.all([
       CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at&order=created_at.desc&limit=500'),
       CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at&order=created_at.desc&limit=500'),
-      CheckSupabaseStatus('/gui_logs?select=id,player_id,player_name,phase,input_data,created_at&order=created_at.desc&limit=1000')
+      // GANTI: Ambil semua kolom baru (*) agar tidak error
+      CheckSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=1000')
     ]);
     S.raw.behavior = b || [];
     S.raw.npc = n || [];
     S.raw.gui = g || [];
+    
+    // GANTI: Petakan feedback langsung dari kolom khusus per fase
     S.raw.feedback = (g || []).map(r => {
-      let fd = {};
-      try {
-        fd = JSON.parse(r.input_data || '{}');
-      } catch (e) {}
+      let frame = r.phase || '';
+      let answer = '';
+      let isCorrect = true;
+      let attemptCount = 1;
+      let msg = '';
+
+      if (r.phase === 'MF') {
+        frame = 'Mess Finding';
+        answer = r.mf_jawaban || '';
+        if (r.mf_lainnya) answer += ` (Lainnya: ${r.mf_lainnya})`;
+        msg = 'Observasi Awal & Checklist';
+      } else if (r.phase === 'DF') {
+        frame = 'Data Finding';
+        answer = `Total: ${r.df_total_time || 0}s (Buku 1: ${r.df_timer_1 || 0}s, Buku 2: ${r.df_timer_2 || 0}s, Buku 3: ${r.df_timer_3 || 0}s)`;
+        msg = 'Waktu Membaca Modul';
+      } else if (r.phase === 'PF') {
+        frame = 'Problem Finding';
+        answer = r.pf_answer || '';
+        isCorrect = r.pf_is_correct ?? false;
+        attemptCount = r.pf_wrong_count || 0;
+        msg = isCorrect ? 'Semua Jawaban Benar' : `Percobaan Salah ke-${attemptCount}`;
+      } else if (r.phase === 'IF') {
+        frame = 'Idea Finding';
+        answer = r.if_solutive_answer || (Array.isArray(r.if_answers) ? r.if_answers.join(' | ') : '');
+        msg = 'Solusi Solutif Terpilih';
+      } else if (r.phase === 'SF') {
+        frame = 'Solution Finding';
+        answer = r.sf_answer || '';
+        msg = 'Evaluasi Solusi Terpilih';
+      } else if (r.phase === 'AF') {
+        frame = 'Acceptance Finding';
+        answer = r.af_answer || '';
+        msg = 'Rencana Aksi Penerimaan';
+      }
+
       return {
         id: r.id,
         player_id: r.player_id,
         player_name: r.player_name,
         created_at: r.created_at,
-        frame: fd.frame || '',
-        feedback_type: fd.feedback_type || r.phase || '',
-        player_answer: fd.player_answer || fd.answer || fd.jawaban || '',
-        feedback_message: fd.feedback_message || '',
-        is_correct: fd.is_correct || false,
-        attempt_count: fd.attempt_count || 0,
-        question_num: fd.question || fd.questionNum || 0
+        frame: frame,
+        feedback_type: r.phase || '',
+        player_answer: answer,
+        feedback_message: msg,
+        is_correct: isCorrect,
+        attempt_count: attemptCount,
+        question_num: 1
       };
     });
-    S.backend = 'Supabase';
-    console.log(S.backend, 'b:' + S.raw.behavior.length, 'n:' + S.raw.npc.length, 'g:' + S.raw.gui.length, 'f:' + S.raw.feedback.length);
-    _cache = {
-      data: {
-        b: S.raw.behavior,
-        n: S.raw.npc,
-        g: S.raw.gui,
-        f: S.raw.feedback,
-        backend: S.backend
-      },
-      ts: Date.now()
-    };
-  } catch (e) {
-    console.error('Load:', e);
-  }
-}
 
 function disc() {
   const m = new Map();
@@ -425,7 +430,7 @@ function rtab() {
   const cols = (S.tab === 'behavior'
     ? ['created_at', 'player_name', 'position_history', 'behavior_sequence', 'section']
     : (S.tab === 'gui'
-      ? ['created_at', 'player_name', 'phase', 'input_data']
+      ? ['created_at', 'player_name', 'phase', 'detail_data']
       : (S.tab === 'feedback'
         ? ['created_at', 'player_name', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct', 'attempt_count']
         : Object.keys(f[0]).filter(c => c !== 'id' && !c.startsWith('_')))));
@@ -778,7 +783,7 @@ function exCSV() {
     cols = ['created_at', 'player_name', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct', 'attempt_count', 'question_num'];
   } else {
     data = S.raw.gui || [];
-    cols = ['created_at', 'player_name', 'phase', 'input_data'];
+    cols = ['created_at', 'player_name', 'phase', 'detail_data'];
   }
 
   if (!data.length) {
@@ -1049,14 +1054,33 @@ function fcell(c, v, r) {
   if (c === 'hint_message') {
     return '<span style="font-size:0.85rem;opacity:0.8">' + escH(String(v || '').slice(0, 80)) + '</span>';
   }
-  if (c === 'input_data' && typeof v === 'string') {
-    try {
-      const j = JSON.parse(v);
-      return j.value || j.section || v.slice(0, 50);
-    } catch (e) {
-      return v.slice(0, 60);
+
+  if (c === 'detail_data') {
+    if (r.phase === 'MF') {
+      const chk = Array.isArray(r.mf_checklist) ? r.mf_checklist.join(', ') : (r.mf_checklist || '—');
+      return `<b>Jawaban:</b> ${escH(r.mf_jawaban || '—')}<br><small><b>Checklist:</b> [${escH(chk)}]</small>`;
     }
+    if (r.phase === 'DF') {
+      return `<b>Total:</b> ${r.df_total_time || 0}s <small>(P1: ${r.df_timer_1 || 0}s | P2: ${r.df_timer_2 || 0}s | P3: ${r.df_timer_3 || 0}s)</small>`;
+    }
+    if (r.phase === 'PF') {
+      const badge = r.pf_is_correct 
+        ? '<span style="color:#22c55e;font-weight:bold">[BENAR]</span>' 
+        : `<span style="color:#ef4444;font-weight:bold">[SALAH ke-${r.pf_wrong_count || 1}]</span>`;
+      return `${badge} ${escH(r.pf_answer || '—')}`;
+    }
+    if (r.phase === 'IF') {
+      return `<b>Solutif:</b> ${escH(r.if_solutive_answer || '—')}`;
+    }
+    if (r.phase === 'SF') {
+      return escH(r.sf_answer || '—');
+    }
+    if (r.phase === 'AF') {
+      return escH(r.af_answer || '—');
+    }
+    return '—';
   }
+
   if (Array.isArray(v)) return v[0] || '';
   if (typeof v === 'object') return JSON.stringify(v).slice(0, 50);
   return String(v).slice(0, 100);
@@ -1105,7 +1129,7 @@ function exDOCX() {
     title = 'Feedback Logs';
   } else {
     data = S.raw.gui || [];
-    cols = ['created_at', 'player_name', 'phase', 'input_data'];
+    cols = ['created_at', 'player_name', 'phase', 'detail_data'];
     title = 'GUI Logs';
   }
 
