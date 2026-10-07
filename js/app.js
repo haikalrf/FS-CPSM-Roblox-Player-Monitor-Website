@@ -89,17 +89,62 @@ function tick() {
   }
 }
 
-const [b, n, g] = await Promise.all([
+// GANTI DARI BARIS SETELAH tick() SAMPAI SEBELUM function disc() DENGAN INI:
+
+function generateDetailData(r) {
+  if (r.phase === 'MF') {
+    const chk = Array.isArray(r.mf_checklist) ? r.mf_checklist.join(', ') : (r.mf_checklist || '—');
+    let ans = r.mf_jawaban || '—';
+    if (r.mf_lainnya) ans += ` (Lainnya: ${r.mf_lainnya})`;
+    return `Jawaban: ${ans} | Checklist: [${chk}]`;
+  }
+  if (r.phase === 'DF') {
+    return `Total: ${r.df_total_time || 0}s (P1: ${r.df_timer_1 || 0}s, P2: ${r.df_timer_2 || 0}s, P3: ${r.df_timer_3 || 0}s)`;
+  }
+  if (r.phase === 'PF') {
+    const status = r.pf_is_correct ? '[BENAR]' : `[SALAH ke-${r.pf_wrong_count || 1}]`;
+    return `${status} ${r.pf_answer || '—'}`;
+  }
+  if (r.phase === 'IF') {
+    return `Solutif: ${r.if_solutive_answer || '—'}`;
+  }
+  if (r.phase === 'SF') {
+    return r.sf_answer || '—';
+  }
+  if (r.phase === 'AF') {
+    return r.af_answer || '—';
+  }
+  return '—';
+}
+
+async function load() {
+  const now = Date.now();
+  if (_cache.data && (now - _cache.ts) < CACHE_TTL) {
+    const d = _cache.data;
+    S.raw.behavior = d.b;
+    S.raw.npc = d.n;
+    S.raw.gui = d.g;
+    S.raw.feedback = d.f;
+    S.backend = d.backend;
+    return;
+  }
+  try {
+    const [b, n, g] = await Promise.all([
       CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at&order=created_at.desc&limit=500'),
       CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at&order=created_at.desc&limit=500'),
-      // GANTI: Ambil semua kolom baru (*) agar tidak error
       CheckSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=1000')
     ]);
+
     S.raw.behavior = b || [];
     S.raw.npc = n || [];
-    S.raw.gui = g || [];
     
-    // GANTI: Petakan feedback langsung dari kolom khusus per fase
+    // Injeksi detail_data ke setiap baris agar aman untuk tabel & ekspor
+    S.raw.gui = (g || []).map(r => {
+      r.detail_data = generateDetailData(r);
+      return r;
+    });
+
+    // Petakan ke tab Feedback
     S.raw.feedback = (g || []).map(r => {
       let frame = r.phase || '';
       let answer = '';
@@ -114,7 +159,7 @@ const [b, n, g] = await Promise.all([
         msg = 'Observasi Awal & Checklist';
       } else if (r.phase === 'DF') {
         frame = 'Data Finding';
-        answer = `Total: ${r.df_total_time || 0}s (Buku 1: ${r.df_timer_1 || 0}s, Buku 2: ${r.df_timer_2 || 0}s, Buku 3: ${r.df_timer_3 || 0}s)`;
+        answer = `Total: ${r.df_total_time || 0}s (P1: ${r.df_timer_1 || 0}s, P2: ${r.df_timer_2 || 0}s, P3: ${r.df_timer_3 || 0}s)`;
         msg = 'Waktu Membaca Modul';
       } else if (r.phase === 'PF') {
         frame = 'Problem Finding';
@@ -150,6 +195,22 @@ const [b, n, g] = await Promise.all([
         question_num: 1
       };
     });
+
+    S.backend = 'Supabase';
+    _cache = {
+      data: {
+        b: S.raw.behavior,
+        n: S.raw.npc,
+        g: S.raw.gui,
+        f: S.raw.feedback,
+        backend: S.backend
+      },
+      ts: Date.now()
+    };
+  } catch (e) {
+    console.error('Load:', e);
+  }
+}
 
 function disc() {
   const m = new Map();
