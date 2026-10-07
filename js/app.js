@@ -112,7 +112,10 @@ function generateDetailData(r) {
     return `${status} ${r.pf_answer || '—'}`;
   }
   if (r.phase === 'IF') {
-    return `Solutif: ${r.if_solutive_answer || '—'}`;
+    const listJawaban = Array.isArray(r.if_answers) 
+      ? r.if_answers.map((ans, i) => `${i + 1}. ${ans}`).join(' | ') 
+      : (r.if_answers || '—');
+    return `Solutif: ${r.if_solutive_answer || '—'} | Jawaban: [${listJawaban}]`;
   }
   if (r.phase === 'SF') {
     return r.sf_answer || '—';
@@ -1149,7 +1152,11 @@ function fcell(c, v, r) {
       return `${badge} ${escH(r.pf_answer || '—')}`;
     }
     if (r.phase === 'IF') {
-      return `<b>Solutif:</b> ${escH(r.if_solutive_answer || '—')}`;
+      const listVisual = Array.isArray(r.if_answers) 
+        ? r.if_answers.map((ans, i) => `<b>${i + 1}.</b> ${escH(ans || '—')}`).join(' | ') 
+        : escH(r.if_answers || '—');
+
+      return `<b>Solutif:</b> <span style="color:#22c55e;font-weight:bold">${escH(r.if_solutive_answer || '—')}</span><br><span style="font-size:0.85rem;opacity:0.9"><b>Jawaban (1–6):</b> ${listVisual}</span>`;
     }
     if (r.phase === 'SF') {
       return escH(r.sf_answer || '—');
