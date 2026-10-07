@@ -2,7 +2,7 @@
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const supabase_url = 'https://jjhjhqsduijyexuazeov.supabase.co/rest/v1';
-const supabase_key = 'sb_publishable_5d01ZWZgdBZJOJpoYsYwVg_aA2R6yL3';
+const supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqaGpocXNkdWlqeWV4dWF6ZW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDEyMDcsImV4cCI6MjEwNjg3NzIwN30.260IJgKNNNOxpQ5wJ87hHC0NnJgC4Pwuv8XQ22vyCrQ';
 //const API='https://laser-cakes-pennsylvania-pike.trycloudflare.com';
 const http_header = { apikey: supabase_key, Authorization: 'Bearer ' + supabase_key };
 
