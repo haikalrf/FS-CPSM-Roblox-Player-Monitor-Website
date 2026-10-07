@@ -94,9 +94,15 @@ function tick() {
 function generateDetailData(r) {
   if (r.phase === 'MF') {
     const chk = Array.isArray(r.mf_checklist) ? r.mf_checklist.join(', ') : (r.mf_checklist || '—');
-    let ans = r.mf_jawaban || '—';
-    if (r.mf_lainnya) ans += ` (Lainnya: ${r.mf_lainnya})`;
-    return `Jawaban: ${ans} | Checklist: [${chk}]`;
+    
+    // Susun urutan: Checklist -> Lainnya -> Jawaban
+    let output = `Checklist: [${chk}]`;
+    if (r.mf_lainnya) {
+       output += ` (Lainnya: ${r.mf_lainnya})`;
+    }
+    output += ` | Jawaban: ${r.mf_jawaban || '—'}`;
+    
+    return output;
   }
   if (r.phase === 'DF') {
     return `Total: ${r.df_total_time || 0}s (P1: ${r.df_timer_1 || 0}s, P2: ${r.df_timer_2 || 0}s, P3: ${r.df_timer_3 || 0}s)`;
@@ -1117,16 +1123,21 @@ function fcell(c, v, r) {
   }
 
   if (c === 'detail_data') {
-   if (r.phase === 'MF') {
+    if (r.phase === 'MF') {
       const chk = Array.isArray(r.mf_checklist) ? r.mf_checklist.join(', ') : (r.mf_checklist || '—');
       
-      // Susun teks jawaban dengan tambahan data "lainnya" jika ada
-      let visualAnswer = escH(r.mf_jawaban || '—');
+      // 1. Tampilkan Checklist terlebih dahulu
+      let visualMF = `<b>Checklist:</b> [${escH(chk)}]`;
+      
+      // 2. Tambahkan "Lainnya" di sebelahnya (jika pemain mengisinya)
       if (r.mf_lainnya) {
-         visualAnswer += ` <span style="color:#f59e0b"><i>(Lainnya: ${escH(r.mf_lainnya)})</i></span>`;
+         visualMF += ` <span style="color:#f59e0b"><i>(Lainnya: ${escH(r.mf_lainnya)})</i></span>`;
       }
       
-      return `<b>Jawaban:</b> ${visualAnswer}<br><small><b>Checklist:</b> [${escH(chk)}]</small>`;
+      // 3. Tambahkan baris baru (<br>) lalu tampilkan Jawaban di bawahnya
+      visualMF += `<br><b>Jawaban:</b> ${escH(r.mf_jawaban || '—')}`;
+      
+      return visualMF;
     }
     if (r.phase === 'DF') {
       return `<b>Total:</b> ${r.df_total_time || 0}s <small>(P1: ${r.df_timer_1 || 0}s | P2: ${r.df_timer_2 || 0}s | P3: ${r.df_timer_3 || 0}s)</small>`;
