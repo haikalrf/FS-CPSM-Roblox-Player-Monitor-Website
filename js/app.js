@@ -115,7 +115,8 @@ function generateDetailData(r) {
     const listJawaban = Array.isArray(r.if_answers) 
       ? r.if_answers.map((ans, i) => `${i + 1}. ${ans}`).join(' | ') 
       : (r.if_answers || '—');
-    return `Solutif: ${r.if_solutive_answer || '—'} | Jawaban: [${listJawaban}]`;
+    let solText = (r.if_solutive_answer || 'tidak ada jawaban solutif').replace(/solutive/gi, 'solutif');
+    return `Solutif: ${solText} | Jawaban: [${listJawaban}]`;
   }
   if (r.phase === 'SF') {
     return r.sf_answer || '—';
@@ -1129,41 +1130,51 @@ function fcell(c, v, r) {
     if (r.phase === 'MF') {
       const chk = Array.isArray(r.mf_checklist) ? r.mf_checklist.join(', ') : (r.mf_checklist || '—');
       
-      // 1. Tampilkan Checklist terlebih dahulu
       let visualMF = `<b>Checklist:</b> [${escH(chk)}]`;
-      
-      // 2. Tambahkan "Lainnya" di sebelahnya (jika pemain mengisinya)
       if (r.mf_lainnya) {
          visualMF += ` <span style="color:#f59e0b"><i>(Lainnya: ${escH(r.mf_lainnya)})</i></span>`;
       }
-      
-      // 3. Tambahkan baris baru (<br>) lalu tampilkan Jawaban di bawahnya
       visualMF += `<br><b>Jawaban:</b> ${escH(r.mf_jawaban || '—')}`;
       
       return visualMF;
     }
+
     if (r.phase === 'DF') {
-      return `<b>Total:</b> ${r.df_total_time || 0}s <small>(P1: ${r.df_timer_1 || 0}s | P2: ${r.df_timer_2 || 0}s | P3: ${r.df_timer_3 || 0}s)</small>`;
+      // Menghilangkan tag <small> agar ukuran font sama dengan MF
+      return `<b>Total:</b> ${r.df_total_time || 0}s (P1: ${r.df_timer_1 || 0}s | P2: ${r.df_timer_2 || 0}s | P3: ${r.df_timer_3 || 0}s)`;
     }
+
     if (r.phase === 'PF') {
       const badge = r.pf_is_correct 
         ? '<span style="color:#22c55e;font-weight:bold">[BENAR]</span>' 
         : `<span style="color:#ef4444;font-weight:bold">[SALAH ke-${r.pf_wrong_count || 1}]</span>`;
       return `${badge} ${escH(r.pf_answer || '—')}`;
     }
+
     if (r.phase === 'IF') {
+      // Normalisasi teks: ubah kata 'solutive' menjadi 'solutif'
+      let solText = (r.if_solutive_answer || 'tidak ada jawaban solutif').replace(/solutive/gi, 'solutif');
+      
+      // Cek apakah tidak ada jawaban solutif (berikan warna merah jika tidak ada)
+      const tidakAdaSolutif = !r.if_solutive_answer || solText.toLowerCase().includes('tidak ada');
+      const warnaSolutif = tidakAdaSolutif ? '#ef4444' : '#22c55e';
+
       const listVisual = Array.isArray(r.if_answers) 
         ? r.if_answers.map((ans, i) => `<b>${i + 1}.</b> ${escH(ans || '—')}`).join(' | ') 
         : escH(r.if_answers || '—');
 
-      return `<b>Solutif:</b> <span style="color:#22c55e;font-weight:bold">${escH(r.if_solutive_answer || '—')}</span><br><span style="font-size:0.85rem;opacity:0.9"><b>Jawaban (1–6):</b> ${listVisual}</span>`;
+      // Font size bawaan tanpa pengecilan agar seragam dengan MF
+      return `<b>Solutif:</b> <span style="color:${warnaSolutif};font-weight:bold">${escH(solText)}</span><br><b>Jawaban (1–6):</b> ${listVisual}`;
     }
+
     if (r.phase === 'SF') {
       return escH(r.sf_answer || '—');
     }
+
     if (r.phase === 'AF') {
       return escH(r.af_answer || '—');
     }
+
     return '—';
   }
 
