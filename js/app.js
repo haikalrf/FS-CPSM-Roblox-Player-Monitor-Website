@@ -38,6 +38,7 @@ const S = {
   ap: [],
   sp: '',
   dl: '',
+  grp: '',
   et: '',
   sr: '',
   p: 1,
@@ -140,8 +141,8 @@ async function load() {
   }
   try {
     const [b, n, g] = await Promise.all([
-      CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at&order=created_at.desc&limit=500'),
-      CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at&order=created_at.desc&limit=500'),
+      CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at,group&order=created_at.desc&limit=500'),
+      CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at,group&order=created_at.desc&limit=500'),
       CheckSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=5000')
     ]);
 
@@ -196,6 +197,7 @@ async function load() {
         player_id: r.player_id,
         player_name: r.player_name,
         created_at: r.created_at,
+        group: r.group || '',
         frame: frame,
         feedback_type: r.phase || '',
         player_answer: answer,
@@ -272,9 +274,8 @@ function fsetup() {
     S.sp = '';
     S.dl = latestDate();
     $('#dateLive').value = S.dl;
-    S.et = '';
-    S.sr = '';
-    $('#searchInput').value = '';
+    if ($('#groupFilter')) $('#groupFilter').value = '';
+    S.grp = '';
     S.p = 1;
     apply();
   });
@@ -309,36 +310,14 @@ function sw(t) {
   $$('.tab-view').forEach(v => v.classList.remove('active'));
   const dv = document.getElementById('view-' + t);
   if (dv) dv.classList.add('active');
-  updET();
   apply();
 }
 
 function ssetup() {
-  $('#searchInput').addEventListener('input', deb(e => {
-    S.sr = e.target.value.toLowerCase();
+  $('#groupFilter')?.addEventListener('change', e => {
+    S.grp = e.target.value;
     S.p = 1;
     apply();
-  }, 250));
-}
-
-$('#filterType').addEventListener('change', e => {
-  S.et = e.target.value;
-  S.p = 1;
-  apply();
-});
-
-function updET() {
-  if (S.tab === 'overview' || S.tab === 'npc' || S.tab === 'sequence') return;
-  const d = grd();
-  const s = $('#filterType');
-  s.innerHTML = '<option value="">Semua</option>';
-  const k = M[S.tab]?.fk;
-  if (!k) return;
-  [...new Set(d.map(r => Array.isArray(r[k]) ? r[k][0] : r[k]).filter(Boolean))].sort().forEach(v => {
-    const o = document.createElement('option');
-    o.value = v;
-    o.textContent = String(v).slice(0, 40);
-    s.appendChild(o);
   });
 }
 
@@ -408,18 +387,11 @@ function apply() {
     const ts = r.created_at || r.timestamp || '';
     return ts.slice(0, 10) === S.dl;
   });
-  if (S.et) {
-    const k = M[S.tab]?.fk;
-    if (k) {
-      d = d.filter(r => {
-        const v = r[k];
-        return Array.isArray(v) ? v[0] === S.et : v === S.et;
-      });
-    }
+
+  if (S.grp) {
+  d = d.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   }
-  if (S.sr) {
-    d = d.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(S.sr)));
-  }
+
   S.fil = d;
   rall();
 }
@@ -481,6 +453,8 @@ function rtab() {
       const ts = r.created_at || r.timestamp || '';
       return ts.slice(0, 10) === S.dl;
     });
+
+    if (S.grp) f = f.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
     if (S.sr) f = f.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(S.sr)));
   } else {
     f = S.fil;
@@ -532,6 +506,7 @@ function rnpc() {
     const ts = r.created_at || r.timestamp || '';
     return ts.slice(0, 10) === S.dl;
   });
+  if (S.grp) c = c.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sr) c = c.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(S.sr)));
 
   const box = $('#chatLogBox');
@@ -696,7 +671,7 @@ function buildPlayerSeq() {
     const n = r.player_name || '?';
     const pid = r.player_id || '?';
     if (!pl[n]) {
-      pl[n] = { player_id: pid, player_name: n, total_actions: 0, sequence: [], timestamps: [], sections: [], lastTs: '' };
+      pl[n] = { player_id: pid, player_name: n, group: r.group || '', total_actions: 0, sequence: [], timestamps: [], sections: [], lastTs: '' };
     }
     const code = Array.isArray(r.behavior_sequence) ? r.behavior_sequence[0] : (Array.isArray(r.behavior_code) ? r.behavior_code[0] : r.behavior_code || '');
     const ts = r.created_at || r.timestamp || '';
@@ -723,6 +698,7 @@ function rseq() {
   let list = buildPlayerSeq();
   if (S.sp) list = list.filter(p => p.player_name === S.sp);
   if (S.dl) list = list.filter(p => p.lastTs.slice(0, 10) === S.dl);
+  if (S.grp) list = list.filter(p => (p.group || '').toLowerCase() === S.grp.toLowerCase());
   if ($('#seqCount')) {
     $('#seqCount').textContent = list.length + ' pemain dengan behavior sequence';
   }
@@ -843,6 +819,12 @@ function esetup() {
 
 function exCSV() {
   let data, cols;
+
+  if (S.tab === 'sequence') {
+    exSeqCSV();
+    return;
+  }
+
   if (S.tab === 'npc') {
     data = S.raw.npc || [];
     cols = ['created_at', 'player_name', 'npc_name', 'message'];
@@ -884,6 +866,12 @@ function exCSV() {
 
 function exJSON() {
   let data;
+
+  if (S.tab === 'sequence') {
+    exSeqJSON();
+    return;
+  }
+
   if (S.tab === 'npc') data = S.raw.npc || [];
   else if (S.tab === 'behavior') data = S.raw.behavior || [];
   else if (S.tab === 'feedback') data = S.raw.feedback || [];
@@ -911,6 +899,7 @@ function getFilteredSeqData() {
   let list = buildPlayerSeq();
   if (S.sp) list = list.filter(p => p.player_name === S.sp);
   if (S.dl) list = list.filter(p => p.lastTs.slice(0, 10) === S.dl);
+  if (S.grp) list = list.filter(p => (p.group || '').toLowerCase() === S.grp.toLowerCase());
   console.log('[Export] Data:', list.length, 'players');
   list.forEach(p => {
     const counts = {};
@@ -1210,6 +1199,12 @@ init();
 // ── WORD EXPORT FOR ALL TABS ──
 function exDOCX() {
   let data, cols, title;
+
+  if (S.tab === 'sequence') {
+    exSeqDOCX();
+    return;
+  }
+
   if (S.tab === 'behavior') {
     data = S.raw.behavior || [];
     cols = ['created_at', 'player_name', 'behavior_sequence', 'section'];
