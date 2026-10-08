@@ -833,6 +833,7 @@ function exJSON() {
   // Terapkan filter sebelum dicek panjangnya
   if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sp) data = data.filter(r => r.player_name === S.sp);
+  if (S.dl) data = data.filter(r => (r.created_at || r.timestamp || '').slice(0, 10) === S.dl);
 
   if (!data.length) {
     alert('Tidak ada data!');
@@ -866,6 +867,7 @@ function exCSV() {
   // Terapkan filter sebelum dicek panjangnya
   if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sp) data = data.filter(r => r.player_name === S.sp);
+  if (S.dl) data = data.filter(r => (r.created_at || r.timestamp || '').slice(0, 10) === S.dl);
 
   if (!data.length) {
     alert('Tidak ada data untuk diexport!');
@@ -1232,6 +1234,7 @@ function exDOCX() {
   // Terapkan filter sebelum dicek panjangnya
   if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sp) data = data.filter(r => r.player_name === S.sp);
+  if (S.dl) data = data.filter(r => (r.created_at || r.timestamp || '').slice(0, 10) === S.dl);
 
   if (!data.length) {
     alert('Tidak ada data untuk diexport!');
