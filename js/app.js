@@ -817,6 +817,30 @@ function esetup() {
   });
 }
 
+function exJSON() {
+  let data;
+
+  if (S.tab === 'sequence') {
+    exSeqJSON();
+    return;
+  }
+
+  if (S.tab === 'npc') data = S.raw.npc || [];
+  else if (S.tab === 'behavior') data = S.raw.behavior || [];
+  else if (S.tab === 'feedback') data = S.raw.feedback || [];
+  else data = S.raw.gui || [];
+
+  // Terapkan filter sebelum dicek panjangnya
+  if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
+  if (S.sp) data = data.filter(r => r.player_name === S.sp);
+
+  if (!data.length) {
+    alert('Tidak ada data!');
+    return;
+  }
+  dl('export_' + S.tab + '_' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(data, null, 2), 'application/json');
+}
+
 function exCSV() {
   let data, cols;
 
@@ -827,17 +851,21 @@ function exCSV() {
 
   if (S.tab === 'npc') {
     data = S.raw.npc || [];
-    cols = ['created_at', 'player_name', 'npc_name', 'message'];
+    cols = ['created_at', 'player_name', 'group', 'npc_name', 'message'];
   } else if (S.tab === 'behavior') {
     data = S.raw.behavior || [];
-    cols = ['created_at', 'player_name', 'position_history', 'behavior_code', 'behavior_sequence', 'section'];
+    cols = ['created_at', 'player_name', 'group', 'position_history', 'behavior_sequence', 'section'];
   } else if (S.tab === 'feedback') {
     data = S.raw.feedback || [];
-    cols = ['created_at', 'player_name', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct', 'attempt_count', 'question_num'];
+    cols = ['created_at', 'player_name', 'group', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct', 'attempt_count', 'question_num'];
   } else {
     data = S.raw.gui || [];
-    cols = ['created_at', 'player_name', 'phase', 'detail_data'];
+    cols = ['created_at', 'player_name', 'group', 'phase', 'detail_data'];
   }
+
+  // Terapkan filter sebelum dicek panjangnya
+  if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
+  if (S.sp) data = data.filter(r => r.player_name === S.sp);
 
   if (!data.length) {
     alert('Tidak ada data untuk diexport!');
@@ -853,35 +881,13 @@ function exCSV() {
     if (c === 'behavior_sequence' && Array.isArray(v)) return '"' + v.join('→') + '"';
     if (c === 'behavior_code' && Array.isArray(v)) return '"' + (v[0] || '') + '"';
     if (c === 'created_at') {
-      try {
-        v = new Date(v).toLocaleString('id-ID');
-      } catch (e) {}
+      try { v = new Date(v).toLocaleString('id-ID'); } catch (e) {}
     }
     if (typeof v === 'object') v = JSON.stringify(v);
     return '"' + String(v || '').replace(/"/g, '""') + '"';
   }).join(',')).join('\n');
 
   dl('export_' + S.tab + '_' + new Date().toISOString().slice(0, 10) + '.csv', csv, 'text/csv;charset=utf-8');
-}
-
-function exJSON() {
-  let data;
-
-  if (S.tab === 'sequence') {
-    exSeqJSON();
-    return;
-  }
-
-  if (S.tab === 'npc') data = S.raw.npc || [];
-  else if (S.tab === 'behavior') data = S.raw.behavior || [];
-  else if (S.tab === 'feedback') data = S.raw.feedback || [];
-  else data = S.raw.gui || [];
-
-  if (!data.length) {
-    alert('Tidak ada data!');
-    return;
-  }
-  dl('export_' + S.tab + '_' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(data, null, 2), 'application/json');
 }
 
 function dl(n, c, t) {
@@ -1207,21 +1213,25 @@ function exDOCX() {
 
   if (S.tab === 'behavior') {
     data = S.raw.behavior || [];
-    cols = ['created_at', 'player_name', 'behavior_sequence', 'section'];
+    cols = ['created_at', 'player_name', 'group', 'behavior_sequence', 'section'];
     title = 'Behavior Logs';
   } else if (S.tab === 'npc') {
     data = S.raw.npc || [];
-    cols = ['created_at', 'player_name', 'npc_name', 'message'];
+    cols = ['created_at', 'player_name', 'group', 'npc_name', 'message'];
     title = 'NPC Interactions';
   } else if (S.tab === 'feedback') {
     data = S.raw.feedback || [];
-    cols = ['created_at', 'player_name', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct'];
+    cols = ['created_at', 'player_name', 'group', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct'];
     title = 'Feedback Logs';
   } else {
     data = S.raw.gui || [];
-    cols = ['created_at', 'player_name', 'phase', 'detail_data'];
+    cols = ['created_at', 'player_name', 'group', 'phase', 'detail_data'];
     title = 'GUI Logs';
   }
+
+  // Terapkan filter sebelum dicek panjangnya
+  if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
+  if (S.sp) data = data.filter(r => r.player_name === S.sp);
 
   if (!data.length) {
     alert('Tidak ada data untuk diexport!');
@@ -1242,9 +1252,7 @@ function exDOCX() {
       if (Array.isArray(v)) v = v.join(', ');
       if (typeof v === 'object') v = JSON.stringify(v);
       if (c === 'created_at') {
-        try {
-          v = new Date(v).toLocaleString('id-ID');
-        } catch (e) {}
+        try { v = new Date(v).toLocaleString('id-ID'); } catch (e) {}
       }
       return '<td>' + String(v).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>';
     }).join('') + '</tr>';
