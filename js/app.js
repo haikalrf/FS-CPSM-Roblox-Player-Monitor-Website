@@ -37,7 +37,6 @@ const S = {
   fil: [],
   ap: [],
   sp: '',
-  dl: '',
   grp: '',
   et: '',
   sr: '',
@@ -254,14 +253,6 @@ function fsetup() {
     S.sp = s.value;
   });
 
-  $('#dateLive').addEventListener('change', () => {
-    S.dl = $('#dateLive').value;
-  });
-
-  const d = latestDate();
-  $('#dateLive').value = d;
-  S.dl = d;
-
   $('#applyFiltersBtn').addEventListener('click', () => {
     S.sp = $('#playerFilter').value;
     S.dl = $('#dateLive').value;
@@ -279,19 +270,6 @@ function fsetup() {
     S.p = 1;
     apply();
   });
-}
-
-function latestDate() {
-  let d = '';
-  for (const t of ['behavior', 'gui', 'npc', 'feedback']) {
-    for (const r of S.raw[t]) {
-      const ts = r.created_at || r.timestamp || '';
-      if (ts > d) {
-        d = ts;
-      }
-    }
-  }
-  return d.slice(0, 10);
 }
 
 function tsetup() {
@@ -333,8 +311,6 @@ function rsetup() {
 async function ref() {
   await load();
   disc();
-  S.dl = latestDate();
-  if ($('#dateLive')) $('#dateLive').value = S.dl;
   apply();
   rnote();
 }
@@ -383,10 +359,6 @@ function apply() {
   }
   let d = [...grd()];
   if (S.sp) d = d.filter(r => r.player_name === S.sp);
-  if (S.dl) d = d.filter(r => {
-    const ts = r.created_at || r.timestamp || '';
-    return ts.slice(0, 10) === S.dl;
-  });
 
   if (S.grp) {
   d = d.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
@@ -449,10 +421,6 @@ function rtab() {
   if (S.tab === 'feedback') {
     f = [...S.raw.feedback || []];
     if (S.sp) f = f.filter(r => r.player_name === S.sp);
-    if (S.dl) f = f.filter(r => {
-      const ts = r.created_at || r.timestamp || '';
-      return ts.slice(0, 10) === S.dl;
-    });
 
     if (S.grp) f = f.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
     if (S.sr) f = f.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(S.sr)));
@@ -502,10 +470,6 @@ function rtab() {
 function rnpc() {
   let c = [...S.raw.npc].reverse();
   if (S.sp) c = c.filter(r => r.player_name === S.sp);
-  if (S.dl) c = c.filter(r => {
-    const ts = r.created_at || r.timestamp || '';
-    return ts.slice(0, 10) === S.dl;
-  });
   if (S.grp) c = c.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sr) c = c.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(S.sr)));
 
@@ -697,7 +661,6 @@ function rseq() {
   if (!container) return;
   let list = buildPlayerSeq();
   if (S.sp) list = list.filter(p => p.player_name === S.sp);
-  if (S.dl) list = list.filter(p => p.lastTs.slice(0, 10) === S.dl);
   if (S.grp) list = list.filter(p => (p.group || '').toLowerCase() === S.grp.toLowerCase());
   if ($('#seqCount')) {
     $('#seqCount').textContent = list.length + ' pemain dengan behavior sequence';
@@ -833,7 +796,6 @@ function exJSON() {
   // Terapkan filter sebelum dicek panjangnya
   if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sp) data = data.filter(r => r.player_name === S.sp);
-  //if (S.dl) data = data.filter(r => (r.created_at || r.timestamp || '').slice(0, 10) === S.dl);
 
   if (!data.length) {
     alert('Tidak ada data!');
@@ -867,7 +829,6 @@ function exCSV() {
   // Terapkan filter sebelum dicek panjangnya
   if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sp) data = data.filter(r => r.player_name === S.sp);
-  //if (S.dl) data = data.filter(r => (r.created_at || r.timestamp || '').slice(0, 10) === S.dl);
 
   if (!data.length) {
     alert('Tidak ada data untuk diexport!');
@@ -906,7 +867,6 @@ function dl(n, c, t) {
 function getFilteredSeqData() {
   let list = buildPlayerSeq();
   if (S.sp) list = list.filter(p => p.player_name === S.sp);
-  if (S.dl) list = list.filter(p => p.lastTs.slice(0, 10) === S.dl);
   if (S.grp) list = list.filter(p => (p.group || '').toLowerCase() === S.grp.toLowerCase());
   console.log('[Export] Data:', list.length, 'players');
   list.forEach(p => {
@@ -1234,7 +1194,6 @@ function exDOCX() {
   // Terapkan filter sebelum dicek panjangnya
   if (S.grp) data = data.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
   if (S.sp) data = data.filter(r => r.player_name === S.sp);
-  //if (S.dl) data = data.filter(r => (r.created_at || r.timestamp || '').slice(0, 10) === S.dl);
 
   if (!data.length) {
     alert('Tidak ada data untuk diexport!');
