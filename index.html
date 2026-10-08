@@ -69,15 +69,20 @@
           <button class="tab" data-tab="feedback">💡 Feedback</button>
           <button class="tab" data-tab="overview">📊 Overview</button>
         </div>
+
         <div class="toolbar-actions">
-          <input type="text" id="searchInput" placeholder="🔍 Cari..." class="search-input">
-          <select id="filterType" class="filter-select"><option value="">Semua</option></select>
+          <select id="groupFilter" class="filter-select">
+            <option value="">Semua Kelompok</option>
+            <option value="Feedback">Feedback</option>
+            <option value="Control">Control</option>
+          </select>
           <div class="export-group">
             <button id="exportCSV" class="btn btn-outline btn-sm">📥 CSV</button>
             <button id="exportJSON" class="btn btn-outline btn-sm">📋 JSON</button>
             <button id="exportBehaviorDOCX" class="btn btn-outline btn-sm">📄 Word</button>
           </div>
-        </div>
+      </div>
+        
       </div>
 
       <!-- BEHAVIOR TAB -->
