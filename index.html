@@ -62,7 +62,6 @@
           <button class="tab" data-tab="sequence">🔀 Urutan Behavior</button>
           <button class="tab" data-tab="npc">💬 Chat NPC</button>
           <button class="tab" data-tab="gui">🖥️ GUI Logs</button>
-          <button class="tab" data-tab="feedback">💡 Feedbacks</button>
           <button class="tab" data-tab="overview">📊 Overview</button>
         </div>
 
@@ -142,6 +141,7 @@
         <div class="table-container">
           <div class="table-info">
             <span id="rowsShownGui">Menampilkan 0 dari 0</span>
+            <div class="pagination" id="paginationGui"></div>
           </div>
           <div class="table-wrapper">
             <table id="dataTableGui">
@@ -151,26 +151,6 @@
           </div>
           <div class="table-info bottom">
             <span id="refreshNoteGui">Data live</span>
-          </div>
-        </div>
-      </div>
-      </div>
-      <!-- OVERVIEW TAB -->
-      <!-- FEEDBACK TAB -->
-      <div class="tab-view" id="view-feedback">
-        <div class="table-container">
-          <div class="table-info">
-            <span id="rowsShownFeedback">Menampilkan 0 dari 0</span>
-            <div class="pagination" id="paginationFeedback"></div>
-          </div>
-          <div class="table-wrapper">
-            <table id="dataTableFeedback">
-              <thead id="tableHeadFeedback"></thead>
-              <tbody id="tableBodyFeedback"><tr><td colspan="99" class="loading">⏳ Memuat data…</td></tr></tbody>
-            </table>
-          </div>
-          <div class="table-info bottom">
-            <span id="refreshNoteFeedback">Data live</span>
           </div>
         </div>
       </div>
@@ -197,41 +177,6 @@
             <div class="npc-list-panel" id="npcListPanel"></div>
           </div>
         </div>
-      </div>
-
-    </div>
-
-    <!-- RIGHT: Minimap + Stats -->
-    <div class="content-right">
-
-      <!-- STATS -->
-      <div class="stats-row-vert" id="statsRowVert">
-        <div class="stat-card">
-          <div class="stat-value" id="statChats">0</div>
-          <div class="stat-label">Chat NPC</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statMoves">0</div>
-          <div class="stat-label">Pergerakan</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statGui">0</div>
-          <div class="stat-label">GUI Logs</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statFeedback">0</div>
-          <div class="stat-label">Feedback</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statPlayers">0</div>
-          <div class="stat-label">Pemain</div>
-        </div>
-      </div>
-
-      <!-- ACTIVE PLAYERS -->
-      <div class="panel players-mini">
-        <h3>👥 Player Aktif</h3>
-        <div class="player-list" id="playerList"></div>
       </div>
 
     </div>

@@ -33,7 +33,7 @@ let _cache = { data: null, ts: 0 };
 const CACHE_TTL = 10000; // 10 seconds
 const S = {
   tab: 'behavior',
-  raw: { behavior: [], gui: [], npc: [], feedback: [] },
+  raw: { behavior: [], gui: [], npc: [] },
   fil: [],
   ap: [],
   sp: '',
@@ -53,7 +53,6 @@ const M = {
   behavior: { fk: 'behavior_code' },
   gui: { fk: 'phase' },
   npc: { fk: 'npc_name' },
-  feedback: { fk: 'frame' },
   overview: { fk: null }
 };
 
@@ -134,7 +133,6 @@ async function load() {
     S.raw.behavior = d.b;
     S.raw.npc = d.n;
     S.raw.gui = d.g;
-    S.raw.feedback = d.f;
     S.backend = d.backend;
     return;
   }
@@ -154,66 +152,12 @@ async function load() {
       return r;
     });
 
-    // Petakan ke tab Feedback
-    S.raw.feedback = (g || []).map(r => {
-      let frame = r.phase || '';
-      let answer = '';
-      let isCorrect = true;
-      let attemptCount = 1;
-      let msg = '';
-
-      if (r.phase === 'MF') {
-        frame = 'Mess Finding';
-        answer = r.mf_jawaban || '';
-        if (r.mf_lainnya) answer += ` (Lainnya: ${r.mf_lainnya})`;
-        msg = 'Observasi Awal & Checklist';
-      } else if (r.phase === 'DF') {
-        frame = 'Data Finding';
-        answer = `Total: ${r.df_total_time || 0}s (P1: ${r.df_timer_1 || 0}s, P2: ${r.df_timer_2 || 0}s, P3: ${r.df_timer_3 || 0}s)`;
-        msg = 'Waktu Membaca Modul';
-      } else if (r.phase === 'PF') {
-        frame = 'Problem Finding';
-        answer = r.pf_answer || '';
-        isCorrect = r.pf_is_correct ?? false;
-        attemptCount = r.pf_wrong_count || 0;
-        msg = isCorrect ? 'Semua Jawaban Benar' : `Percobaan Salah ke-${attemptCount}`;
-      } else if (r.phase === 'IF') {
-        frame = 'Idea Finding';
-        answer = r.if_solutive_answer || (Array.isArray(r.if_answers) ? r.if_answers.join(' | ') : '');
-        msg = 'Solusi Solutif Terpilih';
-      } else if (r.phase === 'SF') {
-        frame = 'Solution Finding';
-        answer = r.sf_answer || '';
-        msg = 'Evaluasi Solusi Terpilih';
-      } else if (r.phase === 'AF') {
-        frame = 'Acceptance Finding';
-        answer = r.af_answer || '';
-        msg = 'Rencana Aksi Penerimaan';
-      }
-
-      return {
-        id: r.id,
-        player_id: r.player_id,
-        player_name: r.player_name,
-        created_at: r.created_at,
-        group: r.group || '',
-        frame: frame,
-        feedback_type: r.phase || '',
-        player_answer: answer,
-        feedback_message: msg,
-        is_correct: isCorrect,
-        attempt_count: attemptCount,
-        question_num: 1
-      };
-    });
-
     S.backend = 'Supabase';
     _cache = {
       data: {
         b: S.raw.behavior,
         n: S.raw.npc,
         g: S.raw.gui,
-        f: S.raw.feedback,
         backend: S.backend
       },
       ts: Date.now()
@@ -225,7 +169,7 @@ async function load() {
 
 function disc() {
   const m = new Map();
-  for (const t of ['behavior', 'gui', 'npc', 'feedback']) {
+  for (const t of ['behavior', 'gui', 'npc']) {
     for (const r of S.raw[t]) {
       const id = r.player_id || '?';
       if (!m.has(id)) {
@@ -317,7 +261,7 @@ async function ref() {
 
 function rnote() {
   const n = new Date();
-  ['refreshNote', 'refreshNoteGui', 'refreshNoteFeedback'].forEach(id => {
+  ['refreshNote', 'refreshNoteGui'].forEach(id => {
     const e = document.getElementById(id);
     if (e) e.textContent = S.backend + ' · ' + n.toLocaleTimeString('id-ID');
   });
@@ -353,10 +297,7 @@ function apply() {
     rall();
     return;
   }
-  if (S.tab === 'feedback') {
-    rall();
-    return;
-  }
+ 
   let d = [...grd()];
   if (S.sp) d = d.filter(r => r.player_name === S.sp);
 
@@ -384,22 +325,12 @@ function gp(p) {
 }
 
 function rall() {
-  ustats();
   ubadge();
   rnote();
   if (S.tab === 'overview') rov();
   else if (S.tab === 'npc') rnpc();
   else if (S.tab === 'sequence') rseq();
   else rtab();
-  dmap();
-}
-
-function ustats() {
-  $('#statChats').textContent = (S.raw.npc || []).length;
-  $('#statMoves').textContent = (S.raw.behavior || []).length;
-  $('#statGui').textContent = (S.raw.gui || []).length;
-  $('#statFeedback').textContent = (S.raw.feedback || []).length;
-  $('#statPlayers').textContent = S.ap.length;
 }
 
 function ubadge() {
@@ -413,20 +344,10 @@ function rtab() {
   const m = {
     behavior: { tid: 'dataTable', hid: 'tableHead', bid: 'tableBody', rid: 'rowsShown', pid: 'pagination' },
     gui: { tid: 'dataTableGui', hid: 'tableHeadGui', bid: 'tableBodyGui', rid: 'rowsShownGui', pid: 'paginationGui' },
-    feedback: { tid: 'dataTableFeedback', hid: 'tableHeadFeedback', bid: 'tableBodyFeedback', rid: 'rowsShownFeedback', pid: 'paginationFeedback' }
   }[S.tab];
   if (!m) return;
   
-  let f;
-  if (S.tab === 'feedback') {
-    f = [...S.raw.feedback || []];
-    if (S.sp) f = f.filter(r => r.player_name === S.sp);
-
-    if (S.grp) f = f.filter(r => (r.group || '').toLowerCase() === S.grp.toLowerCase());
-    if (S.sr) f = f.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(S.sr)));
-  } else {
-    f = S.fil;
-  }
+  let f = S.fil;
 
   const st = (S.p - 1) * S.rpp;
   const en = Math.min(st + S.rpp, f.length);
@@ -550,7 +471,7 @@ function dchart() {
   ctx.clearRect(0, 0, cv.width, cv.height);
 
   const bk = {};
-  for (const r of [...S.raw.behavior, ...S.raw.npc, ...S.raw.gui, ...S.raw.feedback]) {
+  for (const r of [...S.raw.behavior, ...S.raw.npc, ...S.raw.gui]) {
     const ts = r.created_at || r.timestamp || '';
     if (!ts) continue;
     const t = ts.slice(0, 16);
@@ -622,10 +543,6 @@ function dchart() {
   ctx.fillStyle = '#06b6d4';
   ctx.fillRect(pad + 170, 10, 10, 10);
   ctx.fillText('GUI', pad + 184, 20);
-
-  ctx.fillStyle = '#a855f7';
-  ctx.fillRect(pad + 240, 10, 10, 10);
-  ctx.fillText('Feedback', pad + 254, 20);
 }
 
 // ── BEHAVIOR SEQUENCE TAB ──
@@ -737,22 +654,7 @@ function seqTimerSetup() {
   }, 1e3);
 }
 
-// ── MINIMAP REMOVED ──
-function dmap() {
-  return;
-}
 
-function rpl() {
-  const c = $('#playerList');
-  if (!c) return;
-  c.innerHTML = S.ap.length ? S.ap.slice(0, 20).map(p => {
-    const ch = S.raw.npc.filter(r => r.player_name === p.name || r.player_name === p.id).length;
-    const mv = S.raw.behavior.filter(r => r.player_name === p.name || r.player_name === p.id).length;
-    const gu = S.raw.gui.filter(r => r.player_name === p.name).length;
-    const fb = S.raw.feedback.filter(r => r.player_name === p.name).length;
-    return '<div class="player-item" onclick="fbp(\'' + escA(p.name) + '\')"><span class="player-name">👤 ' + escH(p.name) + '</span><span class="player-count-badge-sm">' + (ch + mv + gu + fb) + '</span></div>';
-  }).join('') : '<div class="empty-state" style="padding:15px">Belum ada pemain</div>';
-}
 
 function fbp(n) {
   const s = $('#playerFilter');
@@ -790,7 +692,6 @@ function exJSON() {
 
   if (S.tab === 'npc') data = S.raw.npc || [];
   else if (S.tab === 'behavior') data = S.raw.behavior || [];
-  else if (S.tab === 'feedback') data = S.raw.feedback || [];
   else data = S.raw.gui || [];
 
   // Terapkan filter sebelum dicek panjangnya
@@ -818,9 +719,6 @@ function exCSV() {
   } else if (S.tab === 'behavior') {
     data = S.raw.behavior || [];
     cols = ['created_at', 'player_name', 'group', 'position_history', 'behavior_sequence', 'section'];
-  } else if (S.tab === 'feedback') {
-    data = S.raw.feedback || [];
-    cols = ['created_at', 'player_name', 'group', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct', 'attempt_count', 'question_num'];
   } else {
     data = S.raw.gui || [];
     cols = ['created_at', 'player_name', 'group', 'phase', 'detail_data'];
@@ -1181,10 +1079,6 @@ function exDOCX() {
     data = S.raw.npc || [];
     cols = ['created_at', 'player_name', 'group', 'npc_name', 'message'];
     title = 'NPC Interactions';
-  } else if (S.tab === 'feedback') {
-    data = S.raw.feedback || [];
-    cols = ['created_at', 'player_name', 'group', 'frame', 'feedback_type', 'player_answer', 'feedback_message', 'is_correct'];
-    title = 'Feedback Logs';
   } else {
     data = S.raw.gui || [];
     cols = ['created_at', 'player_name', 'group', 'phase', 'detail_data'];
