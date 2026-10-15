@@ -3,10 +3,17 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const supabase_url = 'https://jjhjhqsduijyexuazeov.supabase.co/rest/v1';
 const supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqaGpocXNkdWlqeWV4dWF6ZW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDEyMDcsImV4cCI6MjEwNjg3NzIwN30.260IJgKNNNOxpQ5wJ87hHC0NnJgC4Pwuv8XQ22vyCrQ';
-//const API='https://laser-cakes-pennsylvania-pike.trycloudflare.com';
 const http_header = { apikey: supabase_key, Authorization: 'Bearer ' + supabase_key };
 
-async function CheckSupabaseStatus(endpoint) {
+function setOnlineStatus(isOnline) {
+  const dot = document.querySelector('#statusIndicator .status-dot');
+  const txt = $('#statusText');
+  if (!dot || !txt) return;
+  dot.className = 'status-dot ' + (isOnline ? 'online' : 'offline');
+  txt.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
+}
+
+async function checkSupabaseStatus(endpoint) {
   const response = await fetch(supabase_url + endpoint, {
     headers: http_header,
     signal: AbortSignal.timeout(5000)
@@ -16,15 +23,17 @@ async function CheckSupabaseStatus(endpoint) {
   });
 
   if (!response) {
+    setOnlineStatus(false)
     return [];
   }
 
   if (response.ok) {
+    setOnlineStatus(true)
     return await response.json();
   }
 
   console.error(`Gagal mengambil data dari Supabase (${response.status}):`, response.statusText);
-
+  setOnlineStatus(false);
   return [];
 }
 
@@ -58,6 +67,7 @@ const M = {
 
 async function init() {
   await load();
+  themeSetup();
   disc();
   fsetup();
   tsetup();
@@ -68,8 +78,36 @@ async function init() {
   sw('behavior');
 }
 
+function themeSetup() {
+  const btn = $('#themeToggleBtn');
+  const icon = $('#themeIcon');
+  const label = $('#themeLabel');
+  if (!btn) return;
 
-// GANTI DARI BARIS SETELAH tick() SAMPAI SEBELUM function disc() DENGAN INI:
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  updateThemeUI(savedTheme, icon, label);
+
+  btn.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeUI(next, icon, label);
+    if (S.tab === 'overview') dchart();
+  });
+}
+
+function updateThemeUI(theme, icon, label) {
+  if (!icon || !label) return;
+  if (theme === 'dark') {
+    icon.textContent = '☀️';
+    label.textContent = 'Light Mode';
+  } else {
+    icon.textContent = '🌙';
+    label.textContent = 'Dark Mode';
+  }
+}
 
 function generateDetailData(r) {
   if (r.phase === 'MF') {
@@ -119,9 +157,9 @@ async function load() {
   }
   try {
     const [b, n, g] = await Promise.all([
-      CheckSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at,group&order=created_at.desc&limit=500'),
-      CheckSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at,group&order=created_at.desc&limit=500'),
-      CheckSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=5000')
+      checkSupabaseStatus('/behavior_logs?select=id,player_id,player_name,behavior_sequence,position_history,created_at,group&order=created_at.desc&limit=500'),
+      checkSupabaseStatus('/npc_interactions?select=id,player_id,player_name,npc_name,message,created_at,group&order=created_at.desc&limit=500'),
+      checkSupabaseStatus('/gui_logs?select=*&order=created_at.desc&limit=5000')
     ]);
 
     S.raw.behavior = b || [];
@@ -170,32 +208,29 @@ function disc() {
   S.ap = [...m.values()].sort((a, b) => b.ts.localeCompare(a.ts));
 }
 
-function fsetup() {
+function updatePlayerDropdown() {
   const s = $('#playerFilter');
-  s.innerHTML = '<option value="">Semua Player</option>' + S.ap.map(p => '<option value="' + escA(p.name) + '">' + escH(p.name) + '</option>').join('');
-  
-  s.addEventListener('change', () => {
-    S.sp = s.value;
-  });
+  if (!s) return;
+  const currentVal = S.sp;
+  s.innerHTML = '<option value="">Semua Pemain (' + S.ap.length + ')</option>' +
+    S.ap.map(p => '<option value="' + escA(p.name) + '">' + escH(p.name) + '</option>').join('');
+  s.value = currentVal;
+}
 
-  $('#applyFiltersBtn').addEventListener('click', () => {
-    S.sp = $('#playerFilter').value;
-    S.p = 1;
-    apply();
-  });
-
-  $('#resetFiltersBtn').addEventListener('click', () => {
-    $('#playerFilter').value = '';
-    S.sp = '';
-    if ($('#groupFilter')) $('#groupFilter').value = '';
-    S.grp = '';
-    S.p = 1;
-    apply();
-  });
+function fsetup() {
+  updatePlayerDropdown();
+  const s = $('#playerFilter');
+  if (s) {
+    s.addEventListener('change', () => {
+      S.sp = s.value;
+      S.p = 1;
+      apply();
+    });
+  }
 }
 
 function tsetup() {
-  $$('.tab').forEach(b => {
+  $$('.nav-tab').forEach(b => {
     b.addEventListener('click', () => sw(b.dataset.tab));
   });
 }
@@ -204,9 +239,14 @@ function sw(t) {
   S.tab = t;
   S.p = 1;
   S.et = '';
-  $$('.tab').forEach(b => b.classList.remove('active'));
-  const btn = document.querySelector('.tab[data-tab="' + t + '"]');
-  if (btn) btn.classList.add('active');
+  $$('.nav-tab').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector('.nav-tab[data-tab="' + t + '"]');
+  if (btn) {
+    btn.classList.add('active');
+    if ($('#currentTabTitle') && btn.dataset.title) {
+      $('#currentTabTitle').textContent = btn.dataset.title;
+    }
+  }
   $$('.tab-view').forEach(v => v.classList.remove('active'));
   const dv = document.getElementById('view-' + t);
   if (dv) dv.classList.add('active');
@@ -222,27 +262,21 @@ function ssetup() {
 }
 
 function rsetup() {
-  $('#refreshInterval').addEventListener('change', e => {
-    S.ri = parseInt(e.target.value);
+  clearInterval(S.rt);
+  S.rt = setInterval(ref, S.ri * 1e3); // Auto-refresh setiap 15 detik
+
+  $('#manualRefreshBtn')?.addEventListener('click', () => {
+    _cache.ts = 0; // Paksa ambil data terbaru dari Supabase
+    ref();
     clearInterval(S.rt);
-    if (S.ri > 0) S.rt = setInterval(ref, S.ri * 1e3);
+    S.rt = setInterval(ref, S.ri * 1e3); // Reset hitung mundur 15 detik
   });
-  if (S.ri > 0) S.rt = setInterval(ref, S.ri * 1e3);
 }
 
 async function ref() {
   await load();
   disc();
   apply();
-  rnote();
-}
-
-function rnote() {
-  const n = new Date();
-  ['refreshNote', 'refreshNoteGui'].forEach(id => {
-    const e = document.getElementById(id);
-    if (e) e.textContent = S.backend + ' · ' + n.toLocaleTimeString('id-ID');
-  });
 }
 
 function grd() {
@@ -293,7 +327,6 @@ function gp(p) {
 
 function rall() {
   ubadge();
-  rnote();
   if (S.tab === 'overview') rov();
   else if (S.tab === 'npc') rnpc();
   else if (S.tab === 'sequence') rseq();
@@ -301,9 +334,7 @@ function rall() {
 }
 
 function ubadge() {
-  if ($('#playerCountBadge')) {
-    $('#playerCountBadge').textContent = S.ap.length + ' Pemain · ' + S.backend;
-  }
+  updatePlayerDropdown();
 }
 
 // ── TABLE ──
@@ -752,12 +783,12 @@ function dedupSequence(seq) {
     if (code === prev) {
       count++;
     } else {
-      if (prev) result.push({ code, count });
+      if (prev) result.push({ code: prev, count });
       prev = code;
       count = 1;
     }
   }
-  if (prev) result.push({ code, count });
+  if (prev) result.push({ code: prev, count });
   return result;
 }
 
