@@ -57,8 +57,6 @@ const M = {
 };
 
 async function init() {
-  tick();
-  setInterval(tick, 1e3);
   await load();
   disc();
   fsetup();
@@ -66,27 +64,10 @@ async function init() {
   ssetup();
   esetup();
   rsetup();
-  ltimer();
   seqTimerSetup();
   sw('behavior');
 }
 
-function tick() {
-  const n = new Date();
-  if ($('#currentDate')) {
-    $('#currentDate').textContent = n.toLocaleDateString('id-ID', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-  if ($('#footerUpdate')) {
-    $('#footerUpdate').textContent = S.backend + ' · ' + n.toLocaleTimeString('id-ID');
-  }
-}
 
 // GANTI DARI BARIS SETELAH tick() SAMPAI SEBELUM function disc() DENGAN INI:
 
@@ -199,7 +180,6 @@ function fsetup() {
 
   $('#applyFiltersBtn').addEventListener('click', () => {
     S.sp = $('#playerFilter').value;
-    S.dl = $('#dateLive').value;
     S.p = 1;
     apply();
   });
@@ -207,8 +187,6 @@ function fsetup() {
   $('#resetFiltersBtn').addEventListener('click', () => {
     $('#playerFilter').value = '';
     S.sp = '';
-    S.dl = latestDate();
-    $('#dateLive').value = S.dl;
     if ($('#groupFilter')) $('#groupFilter').value = '';
     S.grp = '';
     S.p = 1;
@@ -265,17 +243,6 @@ function rnote() {
     const e = document.getElementById(id);
     if (e) e.textContent = S.backend + ' · ' + n.toLocaleTimeString('id-ID');
   });
-}
-
-function ltimer() {
-  setInterval(() => {
-    S.ls++;
-    const m = Math.floor(S.ls / 60);
-    const s = S.ls % 60;
-    if ($('#liveTimer')) {
-      $('#liveTimer').textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-    }
-  }, 1e3);
 }
 
 function grd() {
